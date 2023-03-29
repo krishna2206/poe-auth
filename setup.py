@@ -12,7 +12,7 @@ setup(
     install_requires=['requests', 'beautifulsoup4', 'click'],
     entry_points={
         'console_scripts': [
-            'poe-auth=poe_auth.poe_auth',
+            'poe-auth=poe_auth.poe_auth:cli',
         ],
     },
     classifiers=[
