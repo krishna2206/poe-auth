@@ -10,6 +10,11 @@ setup(
     description=DESCRIPTION,
     packages=find_packages(),
     install_requires=['requests', 'beautifulsoup4', 'click'],
+    entry_points={
+        'console_scripts': [
+            'poe-auth=poe_auth.poe_auth:main',
+        ],
+    },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
