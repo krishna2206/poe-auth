@@ -72,13 +72,16 @@ class PoeAuth:
         else:
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        response = self.session.post(self.auth_api_url, json=data)
+        response = self.session.post(self.auth_api_url, json=data).json()
 
-        if response.status_code != 200:
-            raise PoeAuthException(
-                "Error while sending verification code: " +
-                f"{response.status_code} {response.reason}: {response.json()}")
-        return response.json()
+        if response.get("data") is not None:
+            if response.get("data").get("sendVerificationCode").get("errorMessage") is not None:
+                raise PoeAuthException(
+                    f"Error while sending verification code: {response.get('data').get('sendVerificationCode').get('errorMessage')}")
+            return response
+        raise PoeAuthException(
+            f"Error while sending verification code: {response}")
+        
 
     def login_using_verification_code(self, verification_code: str, mode: str, email: str = None, phone: str = None) -> str:
         if mode == "email":
@@ -96,56 +99,56 @@ class PoeAuth:
         else:
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        response = self.session.post(self.auth_api_url, json=data)
-        if response.status_code != 200:
-            raise PoeAuthException(
-                "Error while login in using verification code: " +
-                f"{response.status_code} {response.reason}: {response.json()}")
-        return self.session.cookies.get_dict().get("p-b")
+        response = self.session.post(self.auth_api_url, json=data).json()
+        if response.get("data") is not None:
+            if response.get("data").get("loginWithVerificationCode").get("errorMessage") is not None:
+                raise PoeAuthException(
+                    f"Error while login in using verification code: {response.get('data').get('loginWithVerificationCode').get('errorMessage')}")
+            return self.session.cookies.get_dict().get("p-b")
+        raise PoeAuthException(
+            f"Error while login in using verification code: {response}")
 
 
 @click.command()
 @click.option("--email", help="User email address")
 @click.option("--phone", help="User phone number")
-@click.option("--mode", type=click.Choice(['email', 'phone']), default="email", help="Verification mode")
 @click.option("--help", is_flag=True, help="Show help message")
-def cli(email, phone, mode, help):
+def cli(email, phone, help):
     if help:
-        click.echo("Usage: poeauth [OPTIONS]")
+        click.echo("Usage: poe_auth.py [OPTIONS]")
         click.echo("Options:")
         click.echo("  --email TEXT  User email address")
         click.echo("  --phone TEXT  User phone number")
-        click.echo("  --mode TEXT   Verification mode")
         click.echo("  --help        Show help message")
         return
 
     poeauth = PoeAuth()
 
-    if email is None and phone is None:
+    if (email is None) and (phone is None):
         click.echo("Email address or phone number is required.")
         return
 
     try:
-        if mode == "email":
+        if email:
             resp = poeauth.send_verification_code(email=email)
-        elif mode == "phone":
+        elif phone:
             resp = poeauth.send_verification_code(phone=phone, mode="phone")
     except PoeAuthException as e:
-        click.echo(f"Error sending verification code: {str(e)}")
+        click.echo(str(e))
         return
 
     verification_code = input(
         f"Enter the verification code sent to {email if email else phone}: ")
 
     try:
-        if mode == "email":
+        if email:
             auth_session = poeauth.login_using_verification_code(
                 verification_code=verification_code, mode="email", email=email)
-        elif mode == "phone":
+        elif phone:
             auth_session = poeauth.login_using_verification_code(
                 verification_code=verification_code, mode="phone", phone=phone)
     except PoeAuthException as e:
-        click.echo(f"Authentication failed: {str(e)}")
+        click.echo(str(e))
         return
 
     click.echo(f"Successful authentication. Session cookie: {auth_session}")
