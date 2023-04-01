@@ -11,7 +11,7 @@ pip install git+https://github.com/krishna2206/poe-auth.git
 ```
 
 ## Usage
-
+### CLI
 You can use the `poe-auth` command to authenticate to https://poe.com/login and get a login session cookie. To use it, run the command with the appropriate options.
 
 ```bash
@@ -22,6 +22,26 @@ or
 
 ```bash
 poe-auth --phone +33601234567
+```
+
+### Module
+You can also use this package as a module. To do so, import the `PoeAuth` class and instantiate it.
+
+```python
+from poe_auth import PoeAuth
+
+auth = PoeAuth()
+
+# Send a verification code to your email
+email = input("Enter your email: ")
+auth.send_verification_code(email)
+
+# Authenticate by entering the verification code
+verification_code = input("Enter the verification code: ")
+sess_cookie = auth.login_using_verification_code(verification_code=verification_code, email=email)
+
+# Print the session cookie
+print(sess_cookie)
 ```
 
 The script will send a verification code to your email or phone number, depending on the option you choose. Enter the verification code when prompted, and the script will authenticate to https://poe.com/login and display the session cookie. You can now use this cookie for this [api](https://github.com/ading2210/poe-api).
