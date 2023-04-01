@@ -28,7 +28,7 @@ class PoeAuth:
             "TE": "trailers"
         }
 
-    def __get_form_key(self) -> str:
+    def _get_form_key(self) -> str:
         response = self.session.get(self.login_url)
         soup = BeautifulSoup(response.text, features="html.parser")
 
@@ -41,7 +41,7 @@ class PoeAuth:
         return form_key
 
     def send_verification_code(self, email: str = None, phone: str = None, mode: str = "email") -> dict:
-        form_key = self.__get_form_key()
+        form_key = self._get_form_key()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0',
             'Accept': '/',
@@ -81,7 +81,6 @@ class PoeAuth:
             return response
         raise PoeAuthException(
             f"Error while sending verification code: {response}")
-        
 
     def login_using_verification_code(self, verification_code: str, mode: str, email: str = None, phone: str = None) -> str:
         if mode == "email":

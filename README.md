@@ -4,38 +4,24 @@ poe-auth is a command line tool to automate the obtention of a session cookie fr
 
 ## Installation
 
-1. Download or clone this repository
-
+You can install this package using pip
+    
 ```bash
-git clone https://github.com/krishna2206/poe-auth.git
-cd poe-auth
-```
-
-2. Create a virtual environment
-
-```bash
-python3 -m venv env
-source env/bin/activate
-```
-
-3. Install the dependencies
-
-```bash
-pip install -r requirements.txt
+pip install git+https://github.com/krishna2206/poe-auth.git
 ```
 
 ## Usage
 
-You can use the `poe_auth.py` script to authenticate to https://poe.com/login and get a login session cookie. To use it, run the script command with the appropriate options.
+You can use the `poe-auth` command to authenticate to https://poe.com/login and get a login session cookie. To use it, run the command with the appropriate options.
 
 ```bash
-./poe_auth/poe_auth.py --email your.email@example.com
+poe-auth --email your.email@example.com
 ```
 
 or
 
 ```bash
-./poe_auth/poe_auth.py --phone +33601234567
+poe-auth --phone +33601234567
 ```
 
 The script will send a verification code to your email or phone number, depending on the option you choose. Enter the verification code when prompted, and the script will authenticate to https://poe.com/login and display the session cookie. You can now use this cookie for this [api](https://github.com/ading2210/poe-api).
