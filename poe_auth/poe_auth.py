@@ -4,6 +4,40 @@ from requests import Session
 from bs4 import BeautifulSoup
 
 
+class GraphQLQueries:
+    login_with_verification_code_mutation = """
+        mutation LoginWithVerificationCodeMutation(
+        $verificationCode: String!
+        $emailAddress: String
+        $phoneNumber: String
+    ) {
+        loginWithVerificationCode(
+            verificationCode: $verificationCode
+            emailAddress: $emailAddress
+            phoneNumber: $phoneNumber
+        ) {
+            status
+        }
+    }
+    """
+    signup_with_verification_code_mutation = """
+        mutation SignupWithVerificationCodeMutation(
+        $verificationCode: String!
+        $emailAddress: String
+        $phoneNumber: String
+    ) {
+        signupWithVerificationCode(
+            verificationCode: $verificationCode
+            emailAddress: $emailAddress
+            phoneNumber: $phoneNumber
+        ) {
+            status
+        }
+    }
+    """
+    send_verification_code_mutation = "mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(\n $emailAddress: String\n $phoneNumber: String\n) {\n sendVerificationCode(verificationReason: login, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n status\n errorMessage\n }\n}\n"
+
+
 class PoeAuthException(Exception):
     pass
 
@@ -12,23 +46,14 @@ class PoeAuth:
     def __init__(self) -> None:
         self.session = Session()
         self.login_url = "https://poe.com/login"
-        self.auth_api_url = "https://poe.com/api/gql_POST"
+        self.gql_api_url = "https://poe.com/api/gql_POST"
+        self.settings_url = "https://poe.com/api/settings"
         self.session.headers = {
             "Host": "poe.com",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-            "Sec-Fetch-Dest": "document",
-            "Sec-Fetch-Mode": "navigate",
-            "Sec-Fetch-Site": "none",
-            "Sec-Fetch-User": "?1",
-            "TE": "trailers"
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0"
         }
 
-    def _get_form_key(self) -> str:
+    def __get_form_key(self) -> str:
         response = self.session.get(self.login_url)
         soup = BeautifulSoup(response.text, features="html.parser")
 
@@ -40,72 +65,91 @@ class PoeAuth:
             raise PoeAuthException(f"Error while getting form key: {e}")
         return form_key
 
+    def __get_tchannel(self) -> str:
+        response = self.session.get(self.settings_url)
+        try:
+            tchannel = response.json().get("tchannelData").get("channel")
+        except Exception as e:
+            raise PoeAuthException(f"Error while getting tchannel: {e}")
+        return tchannel
+
     def send_verification_code(self, email: str = None, phone: str = None, mode: str = "email") -> dict:
-        form_key = self._get_form_key()
+        form_key = self.__get_form_key()
+        tchannel = self.__get_tchannel()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0',
-            'Accept': '/',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
             'Referer': 'https://poe.com/login',
-            'Content-Type': 'application/json',
             'Origin': 'https://poe.com',
             'poe-formkey': form_key,
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'TE': 'trailers'
+            'poe-tchannel': tchannel
         })
-        if mode == "email":
-            data = {
-                "queryName": "MainSignupLoginSection_sendVerificationCodeMutation_Mutation",
-                "variables": {"emailAddress": email, "phoneNumber": None},
-                "query": "mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(\n $emailAddress: String\n $phoneNumber: String\n) {\n sendVerificationCode(verificationReason: login, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n status\n errorMessage\n }\n}\n"
-            }
-        elif mode == "phone":
-            data = {
-                "queryName": "MainSignupLoginSection_sendVerificationCodeMutation_Mutation",
-                "variables": {"emailAddress": None, "phoneNumber": phone},
-                "query": "mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(\n $emailAddress: String\n $phoneNumber: String\n) {\n sendVerificationCode(verificationReason: login, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n status\n errorMessage\n }\n}\n"
-            }
-        else:
+
+        if mode not in ("email", "phone"):
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        response = self.session.post(self.auth_api_url, json=data).json()
+        data = {
+            "queryName": "MainSignupLoginSection_sendVerificationCodeMutation_Mutation",
+            "variables": {"emailAddress": email, "phoneNumber": None} if mode == "email"
+            else {"emailAddress": None, "phoneNumber": phone},
+            "query": GraphQLQueries.send_verification_code_mutation
+        }
 
+        response = self.session.post(self.gql_api_url, json=data).json()
         if response.get("data") is not None:
-            if response.get("data").get("sendVerificationCode").get("errorMessage") is not None:
+            error_message = response.get("data").get(
+                "sendVerificationCode").get("errorMessage")
+            status = response.get("data").get(
+                "sendVerificationCode").get("status")
+            if error_message is not None:
                 raise PoeAuthException(
-                    f"Error while sending verification code: {response.get('data').get('sendVerificationCode').get('errorMessage')}")
-            return response
+                    f"Error while sending verification code: {error_message}")
+            return status
         raise PoeAuthException(
             f"Error while sending verification code: {response}")
 
-    def login_using_verification_code(self, verification_code: str, mode: str, email: str = None, phone: str = None) -> str:
-        if mode == "email":
-            data = {
-                "queryName": "SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation",
-                "variables": {"verificationCode": verification_code, "emailAddress": email, "phoneNumber": None},
-                "query": "mutation SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation(\n  $verificationCode: String!\n  $emailAddress: String\n  $phoneNumber: String\n) {\n  loginWithVerificationCode(verificationCode: $verificationCode, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n    status\n    errorMessage\n  }\n}\n"
-            }
-        elif mode == "phone":
-            data = {
-                "queryName": "SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation",
-                "variables": {"verificationCode": verification_code, "emailAddress": None, "phoneNumber": phone},
-                "query": "mutation SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation(\n  $verificationCode: String!\n  $emailAddress: String\n  $phoneNumber: String\n) {\n  loginWithVerificationCode(verificationCode: $verificationCode, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n    status\n    errorMessage\n  }\n}\n"
-            }
-        else:
+    def __login_or_signup(
+        self, action: str, verification_code: str, mode: str,
+        email: str = None, phone: str = None,
+    ) -> str:
+
+        if mode not in ("email", "phone"):
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        response = self.session.post(self.auth_api_url, json=data).json()
+        data = {
+            # "queryName": "SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation",
+            "variables": {
+                "verificationCode": verification_code,
+                "emailAddress": email, "phoneNumber": None} if mode == "email"
+            else {
+                "verificationCode": verification_code,
+                "emailAddress": None, "phoneNumber": phone},
+            "query": GraphQLQueries.signup_with_verification_code_mutation if action == "signup"
+            else GraphQLQueries.login_with_verification_code_mutation
+        }
+
+        response = self.session.post(self.gql_api_url, json=data).json()
         if response.get("data") is not None:
-            if response.get("data").get("loginWithVerificationCode").get("errorMessage") is not None:
+            status = response.get("data").get(
+                "loginWithVerificationCode" if action == "login"
+                else "signupWithVerificationCode").get("status")
+
+            if status != "success":
                 raise PoeAuthException(
-                    f"Error while login in using verification code: {response.get('data').get('loginWithVerificationCode').get('errorMessage')}")
+                    f"Error while login in using verification code: {status}")
             return self.session.cookies.get_dict().get("p-b")
         raise PoeAuthException(
             f"Error while login in using verification code: {response}")
+
+    def signup_using_verification_code(
+        self, verification_code: str, mode: str,
+        email: str = None, phone: str = None
+    ) -> str:
+        return self.__login_or_signup("signup", verification_code, mode, email, phone)
+
+    def login_using_verification_code(
+        self, verification_code: str, mode: str,
+        email: str = None, phone: str = None
+    ) -> str:
+        return self.__login_or_signup("login", verification_code, mode, email, phone)
 
 
 @click.command()
@@ -129,9 +173,9 @@ def cli(email, phone, help):
 
     try:
         if email:
-            resp = poeauth.send_verification_code(email=email)
+            status = poeauth.send_verification_code(email=email)
         elif phone:
-            resp = poeauth.send_verification_code(phone=phone, mode="phone")
+            status = poeauth.send_verification_code(phone=phone, mode="phone")
     except PoeAuthException as e:
         click.echo(str(e))
         return
@@ -141,11 +185,19 @@ def cli(email, phone, help):
 
     try:
         if email:
-            auth_session = poeauth.login_using_verification_code(
-                verification_code=verification_code, mode="email", email=email)
+            if status == "user_with_confirmed_email_not_found":
+                auth_session = poeauth.signup_using_verification_code(
+                    verification_code=verification_code, mode="email", email=email)
+            else:
+                auth_session = poeauth.login_using_verification_code(
+                    verification_code=verification_code, mode="email", email=email)
         elif phone:
-            auth_session = poeauth.login_using_verification_code(
-                verification_code=verification_code, mode="phone", phone=phone)
+            if status == "user_with_confirmed_phone_number_not_found":
+                auth_session = poeauth.signup_using_verification_code(
+                    verification_code=verification_code, mode="phone", phone=phone)
+            else:
+                auth_session = poeauth.login_using_verification_code(
+                    verification_code=verification_code, mode="phone", phone=phone)
     except PoeAuthException as e:
         click.echo(str(e))
         return

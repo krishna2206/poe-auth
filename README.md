@@ -1,18 +1,18 @@
 # poe-auth
 
-poe-auth is a command line tool to automate the obtention of a session cookie from [Quora's Poe](https://poe.com).
+poe-auth is a command line tool to automate the obtention of a session token from [Quora's Poe](https://poe.com).
 
 ## Installation
 
 You can install this package using pip
     
 ```bash
-pip install git+https://github.com/krishna2206/poe-auth.git
+pip install --upgrade git+https://github.com/krishna2206/poe-auth.git
 ```
 
 ## Usage
 ### CLI
-You can use the `poe-auth` command to authenticate to https://poe.com/login and get a login session cookie. To use it, run the command with the appropriate options.
+You can use the `poe-auth` that will be installed in your system. It has two options: `--email` and `--phone`. You can use either of them to authenticate to Poe.
 
 ```bash
 poe-auth --email your.email@example.com
@@ -26,25 +26,53 @@ poe-auth --phone +33601234567
 
 ### Module
 You can also use this package as a module. To do so, import the `PoeAuth` class and instantiate it.
-
+    
 ```python
 from poe_auth import PoeAuth
 
 auth = PoeAuth()
+```
 
+#### Login/Signup using email
+```python
 # Send a verification code to your email
 email = input("Enter your email: ")
-auth.send_verification_code(email)
+status = auth.send_verification_code(email)
 
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
-sess_cookie = auth.login_using_verification_code(verification_code=verification_code, email=email)
+if status == "user_with_confirmed_email_not_found":
+    session_token = poeauth.signup_using_verification_code(
+        verification_code=verification_code, mode="email", email=email_adress)
+else:
+    session_token = poeauth.login_using_verification_code(
+        verification_code=verification_code, mode="email", email=email_adress)
 
-# Print the session cookie
-print(sess_cookie)
+# Print the session token
+print(session_token)
 ```
 
-The script will send a verification code to your email or phone number, depending on the option you choose. Enter the verification code when prompted, and the script will authenticate to https://poe.com/login and display the session cookie. You can now use this cookie for this [api](https://github.com/ading2210/poe-api).
+#### Login/Signup using phone number
+```python
+phone = input("Enter your phone number: ")
+status = auth.send_verification_code(phone)
+
+# Authenticate by entering the verification code
+verification_code = input("Enter the verification code: ")
+if status == "user_with_confirmed_phone_number_not_found":
+    session_token = poeauth.signup_using_verification_code(
+        verification_code=verification_code, mode="phone", phone=phone_number)
+else:
+    session_token = poeauth.login_using_verification_code(
+        verification_code=verification_code, mode="phone", phone=phone_number)
+
+# Print the session token
+print(session_token)
+```
+
+The script will send a verification code to your email or phone number, depending on the option you choose. 
+Enter the verification code when prompted, and the script will authenticate to Poe and display the session token. 
+You can now use this token for this [API](https://github.com/ading2210/poe-api).
 
 ## License
 
