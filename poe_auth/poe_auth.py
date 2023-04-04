@@ -2,6 +2,7 @@ import json
 import click
 from requests import Session
 from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
 
 
 class GraphQLQueries:
@@ -50,7 +51,7 @@ class PoeAuth:
         self.settings_url = "https://poe.com/api/settings"
         self.session.headers = {
             "Host": "poe.com",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:103.0) Gecko/20100101 Firefox/103.0"
+            "User-Agent": UserAgent(browsers=["edge", "chrome", "firefox"]).random,
         }
 
     def __get_form_key(self) -> str:
@@ -115,7 +116,6 @@ class PoeAuth:
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
         data = {
-            # "queryName": "SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation",
             "variables": {
                 "verificationCode": verification_code,
                 "emailAddress": email, "phoneNumber": None} if mode == "email"
@@ -158,7 +158,7 @@ class PoeAuth:
 @click.option("--help", is_flag=True, help="Show help message")
 def cli(email, phone, help):
     if help:
-        click.echo("Usage: poe_auth.py [OPTIONS]")
+        click.echo("Usage: poe-auth [OPTIONS]")
         click.echo("Options:")
         click.echo("  --email TEXT  User email address")
         click.echo("  --phone TEXT  User phone number")

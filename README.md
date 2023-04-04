@@ -12,7 +12,8 @@ pip install --upgrade git+https://github.com/krishna2206/poe-auth.git
 
 ## Usage
 ### CLI
-You can use the `poe-auth` that will be installed in your system. It has two options: `--email` and `--phone`. 
+You can use the `poe-auth` command that will be installed in your system. 
+It has two options: `--email` and `--phone`. 
 You can use either one of them to authenticate to Poe.
 
 ```bash
