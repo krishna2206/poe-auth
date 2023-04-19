@@ -1,0 +1,14 @@
+mutation SignupOrLoginWithCodeSection_signupWithVerificationCodeMutation_Mutation(
+    $verificationCode: String!
+    $emailAddress: String
+    $phoneNumber: String
+) {
+    signupWithVerificationCode(
+        verificationCode: $verificationCode
+        emailAddress: $emailAddress
+        phoneNumber: $phoneNumber
+  ) {
+        status
+        errorMessage
+    }
+}

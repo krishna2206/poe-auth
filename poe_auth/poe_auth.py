@@ -1,42 +1,31 @@
+import re
 import json
+import logging
+import hashlib
+from pathlib import Path
+
 import click
 from requests import Session
-from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
 
-class GraphQLQueries:
-    login_with_verification_code_mutation = """
-        mutation LoginWithVerificationCodeMutation(
-        $verificationCode: String!
-        $emailAddress: String
-        $phoneNumber: String
-    ) {
-        loginWithVerificationCode(
-            verificationCode: $verificationCode
-            emailAddress: $emailAddress
-            phoneNumber: $phoneNumber
-        ) {
-            status
-        }
-    }
-    """
-    signup_with_verification_code_mutation = """
-        mutation SignupWithVerificationCodeMutation(
-        $verificationCode: String!
-        $emailAddress: String
-        $phoneNumber: String
-    ) {
-        signupWithVerificationCode(
-            verificationCode: $verificationCode
-            emailAddress: $emailAddress
-            phoneNumber: $phoneNumber
-        ) {
-            status
-        }
-    }
-    """
-    send_verification_code_mutation = "mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(\n $emailAddress: String\n $phoneNumber: String\n) {\n sendVerificationCode(verificationReason: login, emailAddress: $emailAddress, phoneNumber: $phoneNumber) {\n status\n errorMessage\n }\n}\n"
+parent_path = Path(__file__).resolve().parent
+queries_path = parent_path / "graphql"
+gql_queries = {}
+
+logging.basicConfig()
+logger = logging.getLogger()
+
+
+def load_queries():
+    for path in queries_path.iterdir():
+        if path.suffix != ".graphql":
+            continue
+        with open(path) as f:
+            gql_queries[path.stem] = f.read()
+
+
+load_queries()
 
 
 class PoeAuthException(Exception):
@@ -54,17 +43,27 @@ class PoeAuth:
             "User-Agent": UserAgent(browsers=["edge", "chrome", "firefox"]).random,
         }
 
+        self.form_key = self.__get_form_key()
+        self.tchannel = self.__get_tchannel()
+
+    # CTTO: https://github.com/ading2210/poe-api/commit/59597cfb4a9c81c93e879c985f5b617a74d07f85
     def __get_form_key(self) -> str:
         response = self.session.get(self.login_url)
-        soup = BeautifulSoup(response.text, features="html.parser")
 
-        try:
-            next_data = soup.find("script", id="__NEXT_DATA__")
-            next_data = json.loads(next_data.text)
-            form_key = next_data.get("props").get("formkey")
-        except Exception as e:
-            raise PoeAuthException(f"Error while getting form key: {e}")
-        return form_key
+        script_regex = r'<script>if\(.+\)throw new Error;(.+)</script>'
+        script_text = re.search(script_regex, response.text).group(1)
+        key_regex = r'var .="([0-9a-f]+)",'
+        key_text = re.search(key_regex, script_text).group(1)
+        cipher_regex = r'.\[(\d+)\]=.\[(\d+)\]'
+        cipher_pairs = re.findall(cipher_regex, script_text)
+
+        formkey_list = [""] * len(cipher_pairs)
+        for pair in cipher_pairs:
+            formkey_index, key_index = map(int, pair)
+            formkey_list[formkey_index] = key_text[key_index]
+        formkey = "".join(formkey_list)
+
+        return formkey
 
     def __get_tchannel(self) -> str:
         response = self.session.get(self.settings_url)
@@ -74,27 +73,50 @@ class PoeAuth:
             raise PoeAuthException(f"Error while getting tchannel: {e}")
         return tchannel
 
-    def send_verification_code(self, email: str = None, phone: str = None, mode: str = "email") -> dict:
-        form_key = self.__get_form_key()
-        tchannel = self.__get_tchannel()
-        self.session.headers.update({
-            'Referer': 'https://poe.com/login',
-            'Origin': 'https://poe.com',
-            'poe-formkey': form_key,
-            'poe-tchannel': tchannel
-        })
+    def __generate_payload(self, query_key: str, query_name: str, variables: dict) -> dict:
+        return {
+            "queryName": query_name,
+            "query": gql_queries[query_key],
+            "variables": variables
+        }
 
+    # Inspiration: https://github.com/ading2210/poe-api/pull/39
+    def __generate_tag_id(self, form_key: str, payload: dict) -> str:
+        payload = json.dumps(payload)
+
+        base_string = payload + form_key + "WpuLMiXEKKE98j56k"
+
+        return hashlib.md5(base_string.encode()).hexdigest()
+
+    def send_verification_code(self, email: str = None, phone: str = None, mode: str = "email") -> dict:
         if mode not in ("email", "phone"):
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        data = {
-            "queryName": "MainSignupLoginSection_sendVerificationCodeMutation_Mutation",
-            "variables": {"emailAddress": email, "phoneNumber": None} if mode == "email"
-            else {"emailAddress": None, "phoneNumber": phone},
-            "query": GraphQLQueries.send_verification_code_mutation
-        }
+        payload = self.__generate_payload(
+            query_key="SendVerificationCodeForLoginMutation",
+            query_name="MainSignupLoginSection_sendVerificationCodeMutation_Mutation",
+            variables={"emailAddress": email, "phoneNumber": None, "recaptchaToken": None} if mode == "email"
+            else {"emailAddress": None, "phoneNumber": phone, "recaptchaToken": None}
+        )
+        tag_id = self.__generate_tag_id(
+            form_key=self.form_key,
+            payload=payload
+        )
 
-        response = self.session.post(self.gql_api_url, json=data).json()
+        logger.debug(f"Form key: {self.form_key}")
+        logger.debug(f"Tchannel: {self.tchannel}")
+        logger.debug(f"Tag ID: {tag_id}")
+
+        self.session.headers.update({
+            'Referer': 'https://poe.com/login',
+            'Origin': 'https://poe.com',
+            'Content-Type': 'application/json',
+            'poe-formkey': self.form_key,
+            'poe-tchannel': self.tchannel,
+            'poe-tag-id': tag_id,
+        })
+
+        response = self.session.post(self.gql_api_url, json=payload).json()
         if response.get("data") is not None:
             error_message = response.get("data").get(
                 "sendVerificationCode").get("errorMessage")
@@ -115,18 +137,29 @@ class PoeAuth:
         if mode not in ("email", "phone"):
             raise ValueError("Invalid mode. Must be 'email' or 'phone'.")
 
-        data = {
-            "variables": {
-                "verificationCode": verification_code,
-                "emailAddress": email, "phoneNumber": None} if mode == "email"
-            else {
-                "verificationCode": verification_code,
-                "emailAddress": None, "phoneNumber": phone},
-            "query": GraphQLQueries.signup_with_verification_code_mutation if action == "signup"
-            else GraphQLQueries.login_with_verification_code_mutation
-        }
+        payload = self.__generate_payload(
+            query_key="LoginWithVerificationCodeMutation" if action == "login"
+            else "SignupWithVerificationCodeMutation",
+            query_name="SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation" if action == "login"
+            else "SignupOrLoginWithCodeSection_signupWithVerificationCodeMutation_Mutation",
+            variables={"verificationCode": verification_code, "emailAddress": email, "phoneNumber": None} if mode == "email"
+            else {"verificationCode": verification_code, "emailAddress": None, "phoneNumber": phone}
+        )
 
-        response = self.session.post(self.gql_api_url, json=data).json()
+        tag_id = self.__generate_tag_id(
+            form_key=self.form_key,
+            payload=payload
+        )
+
+        logger.debug(f"Form key: {self.form_key}")
+        logger.debug(f"Tchannel: {self.tchannel}")
+        logger.debug(f"Tag ID: {tag_id}")
+
+        self.session.headers.update({
+            'poe-tag-id': tag_id,
+        })
+
+        response = self.session.post(self.gql_api_url, json=payload).json()
         if response.get("data") is not None:
             status = response.get("data").get(
                 "loginWithVerificationCode" if action == "login"

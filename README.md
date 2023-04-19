@@ -2,6 +2,9 @@
 
 poe-auth is a command line tool to automate the obtention of a session token from [Quora's Poe](https://poe.com).
 
+**Note**: Authentication using phone number does not work as it requires a recaptcha token to be sent with the request. 
+If someone know how to get this token, feel free to contribute.
+
 ## Installation
 
 You can install this package using pip

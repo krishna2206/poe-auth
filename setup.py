@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '2.0.1'
+VERSION = '2.0.2'
 DESCRIPTION = 'A reverse-engineered Python library for the Quora\'s Poe authentication API.'
 setup(
     name="poe-auth",
@@ -9,7 +9,7 @@ setup(
     author_email="fitiavana.krishna@gmail.com",
     description=DESCRIPTION,
     packages=find_packages(),
-    install_requires=['requests', 'beautifulsoup4', 'click', 'fake-useragent'],
+    install_requires=['requests', 'click', 'fake-useragent'],
     entry_points={
         'console_scripts': [
             'poe-auth=poe_auth.poe_auth:cli',

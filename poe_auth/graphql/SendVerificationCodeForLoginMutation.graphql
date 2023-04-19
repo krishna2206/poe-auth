@@ -1,0 +1,15 @@
+mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(
+    $emailAddress: String
+    $phoneNumber: String
+    $recaptchaToken: String
+) {
+    sendVerificationCode(
+        verificationReason: login
+        emailAddress: $emailAddress
+        phoneNumber: $phoneNumber
+        recaptchaToken: $recaptchaToken
+    ) {
+        status
+        errorMessage
+    }
+}
