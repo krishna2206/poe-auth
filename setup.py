@@ -8,6 +8,7 @@ setup(
     author="Anhy Krishna Fitiavana",
     author_email="fitiavana.krishna@gmail.com",
     description=DESCRIPTION,
+    long_description=open('README.md').read(),
     packages=find_packages(),
     install_requires=['requests', 'click', 'fake-useragent'],
     entry_points={
