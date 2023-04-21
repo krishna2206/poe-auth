@@ -64,10 +64,10 @@ status = auth.send_verification_code(email)
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
 if status == "user_with_confirmed_email_not_found":
-    session_token = poeauth.signup_using_verification_code(
+    session_token = auth.signup_using_verification_code(
         verification_code=verification_code, mode="email", email=email_adress)
 else:
-    session_token = poeauth.login_using_verification_code(
+    session_token = auth.login_using_verification_code(
         verification_code=verification_code, mode="email", email=email_adress)
 
 # Print the session token
@@ -83,16 +83,16 @@ status = auth.send_verification_code(email)
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
 if status == "user_with_confirmed_email_not_found":
-    session_token = poeauth.signup_using_verification_code(
+    session_token = auth.signup_using_verification_code(
         verification_code=verification_code, mode="email")
 else:
-    session_token = poeauth.login_using_verification_code(
+    session_token = auth.login_using_verification_code(
         verification_code=verification_code, mode="email")
 
 # Print the session token
 print(session_token)
 
-poeauth.browser.close()
+auth.browser.close()
 ```
 
 #### Login/Signup using phone number
@@ -105,10 +105,10 @@ status = auth.send_verification_code(phone)
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
 if status == "user_with_confirmed_phone_number_not_found":
-    session_token = poeauth.signup_using_verification_code(
+    session_token = auth.signup_using_verification_code(
         verification_code=verification_code, mode="phone", phone=phone_number)
 else:
-    session_token = poeauth.login_using_verification_code(
+    session_token = auth.login_using_verification_code(
         verification_code=verification_code, mode="phone", phone=phone_number)
 
 # Print the session token
@@ -123,16 +123,16 @@ status = auth.send_verification_code(phone)
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
 if status == "user_with_confirmed_phone_number_not_found":
-    session_token = poeauth.signup_using_verification_code(
+    session_token = auth.signup_using_verification_code(
         verification_code=verification_code, mode="phone")
 else:
-    session_token = poeauth.login_using_verification_code(
+    session_token = auth.login_using_verification_code(
         verification_code=verification_code, mode="phone")
 
 # Print the session token
 print(session_token)
 
-poeauth.browser.close()
+auth.browser.close()
 ```
 
 The script will send a verification code to your email or phone number, depending on the option you choose. 
