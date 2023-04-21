@@ -2,30 +2,66 @@ import re
 import json
 import logging
 import hashlib
-from pathlib import Path
 
 import click
 from requests import Session
 from fake_useragent import UserAgent
 
 
-parent_path = Path(__file__).resolve().parent
-queries_path = parent_path / "graphql"
-gql_queries = {}
+gql_queries = {
+    "SendVerificationCodeForLoginMutation": """
+        mutation MainSignupLoginSection_sendVerificationCodeMutation_Mutation(
+            $emailAddress: String
+            $phoneNumber: String
+            $recaptchaToken: String
+        ) {
+            sendVerificationCode(
+                verificationReason: login
+                emailAddress: $emailAddress
+                phoneNumber: $phoneNumber
+                recaptchaToken: $recaptchaToken
+            ) {
+                status
+                errorMessage
+            }
+        }
+    """,
+    "SignupWithVerificationCodeMutation": """
+        mutation SignupOrLoginWithCodeSection_signupWithVerificationCodeMutation_Mutation(
+            $verificationCode: String!
+            $emailAddress: String
+            $phoneNumber: String
+        ) {
+            signupWithVerificationCode(
+                verificationCode: $verificationCode
+                emailAddress: $emailAddress
+                phoneNumber: $phoneNumber
+        ) {
+                status
+                errorMessage
+            }
+        }
+    """,
+    "LoginWithVerificationCodeMutation": """
+        mutation SignupOrLoginWithCodeSection_loginWithVerificationCodeMutation_Mutation(
+            $verificationCode: String!
+            $emailAddress: String
+            $phoneNumber: String
+        ) {
+            loginWithVerificationCode(
+                verificationCode: $verificationCode
+                emailAddress: $emailAddress
+                phoneNumber: $phoneNumber
+        ) {
+                status
+                errorMessage
+            }
+        }
+    """
+}
 
 logging.basicConfig()
 logger = logging.getLogger()
-
-
-def load_queries():
-    for path in queries_path.iterdir():
-        if path.suffix != ".graphql":
-            continue
-        with open(path) as f:
-            gql_queries[path.stem] = f.read()
-
-
-load_queries()
 
 
 class PoeAuthException(Exception):
@@ -49,6 +85,7 @@ class PoeAuth:
     # CTTO: https://github.com/ading2210/poe-api/commit/59597cfb4a9c81c93e879c985f5b617a74d07f85
     def __get_form_key(self) -> str:
         response = self.session.get(self.login_url)
+        print(response.text)
 
         script_regex = r'<script>if\(.+\)throw new Error;(.+)</script>'
         script_text = re.search(script_regex, response.text).group(1)
