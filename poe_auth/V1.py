@@ -3,7 +3,6 @@ import json
 import logging
 import hashlib
 
-import click
 from requests import Session
 from fake_useragent import UserAgent
 
@@ -220,60 +219,3 @@ class PoeAuth:
         email: str = None, phone: str = None
     ) -> str:
         return self.__login_or_signup("login", verification_code, mode, email, phone)
-
-
-@click.command()
-@click.option("--email", help="User email address")
-@click.option("--phone", help="User phone number")
-@click.option("--help", is_flag=True, help="Show help message")
-def cli(email, phone, help):
-    if help:
-        click.echo("Usage: poe-auth [OPTIONS]")
-        click.echo("Options:")
-        click.echo("  --email TEXT  User email address")
-        click.echo("  --phone TEXT  User phone number")
-        click.echo("  --help        Show help message")
-        return
-
-    poeauth = PoeAuth()
-
-    if (email is None) and (phone is None):
-        click.echo("Email address or phone number is required.")
-        return
-
-    try:
-        if email:
-            status = poeauth.send_verification_code(email=email)
-        elif phone:
-            status = poeauth.send_verification_code(phone=phone, mode="phone")
-    except PoeAuthException as e:
-        click.echo(str(e))
-        return
-
-    verification_code = input(
-        f"Enter the verification code sent to {email if email else phone}: ")
-
-    try:
-        if email:
-            if status == "user_with_confirmed_email_not_found":
-                auth_session = poeauth.signup_using_verification_code(
-                    verification_code=verification_code, mode="email", email=email)
-            else:
-                auth_session = poeauth.login_using_verification_code(
-                    verification_code=verification_code, mode="email", email=email)
-        elif phone:
-            if status == "user_with_confirmed_phone_number_not_found":
-                auth_session = poeauth.signup_using_verification_code(
-                    verification_code=verification_code, mode="phone", phone=phone)
-            else:
-                auth_session = poeauth.login_using_verification_code(
-                    verification_code=verification_code, mode="phone", phone=phone)
-    except PoeAuthException as e:
-        click.echo(str(e))
-        return
-
-    click.echo(f"Successful authentication. Session cookie: {auth_session}")
-
-
-if __name__ == "__main__":
-    cli()

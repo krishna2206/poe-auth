@@ -2,8 +2,10 @@
 
 poe-auth is a command line tool to automate the obtention of a session token from [Quora's Poe](https://poe.com).
 
-**Note**: This library is **broken** as it requires a recaptcha token to be sent with the request. 
+**NOTE**: This library is **broken** as it requires a recaptcha token to be sent with the request. 
 If someone know how to get this token, feel free to contribute.
+
+Instead, you can use the full browser automated version using `--browser` option or the *V2* module (requires `playwright` package).
 
 ## Installation
 
@@ -29,16 +31,31 @@ or
 poe-auth --phone +33601234567
 ```
 
+If you want to use the browser automated version, just add the `--browser` option.
+
 ### Module
 You can also use this package as a module. To do so, import the `PoeAuth` class and instantiate it.
-    
+
+#### V1 (Reverse engineered API)
 ```python
-from poe_auth import PoeAuth
+from poe_auth.V1 import PoeAuth
 
 auth = PoeAuth()
 ```
 
+#### V2 (Browser automated)
+```python
+from playwright.sync_api import sync_playwright
+from poe_auth.V2 import PoeAuth
+
+with sync_playwright as p:
+    auth = PoeAuth(p)
+    # All the code goes here
+```
+
 #### Login/Signup using email
+
+##### V1 (Reverse engineered API)
 ```python
 # Send a verification code to your email
 email = input("Enter your email: ")
@@ -57,7 +74,30 @@ else:
 print(session_token)
 ```
 
+##### V2 (Browser automated)
+```python
+# Send a verification code to your email
+email = input("Enter your email: ")
+status = auth.send_verification_code(email)
+
+# Authenticate by entering the verification code
+verification_code = input("Enter the verification code: ")
+if status == "user_with_confirmed_email_not_found":
+    session_token = poeauth.signup_using_verification_code(
+        verification_code=verification_code, mode="email")
+else:
+    session_token = poeauth.login_using_verification_code(
+        verification_code=verification_code, mode="email")
+
+# Print the session token
+print(session_token)
+
+poeauth.browser.close()
+```
+
 #### Login/Signup using phone number
+
+##### V1 (Reverse engineered API)
 ```python
 phone = input("Enter your phone number: ")
 status = auth.send_verification_code(phone)
@@ -73,6 +113,26 @@ else:
 
 # Print the session token
 print(session_token)
+```
+
+##### V2 (Browser automated)
+```python
+phone = input("Enter your phone number: ")
+status = auth.send_verification_code(phone)
+
+# Authenticate by entering the verification code
+verification_code = input("Enter the verification code: ")
+if status == "user_with_confirmed_phone_number_not_found":
+    session_token = poeauth.signup_using_verification_code(
+        verification_code=verification_code, mode="phone")
+else:
+    session_token = poeauth.login_using_verification_code(
+        verification_code=verification_code, mode="phone")
+
+# Print the session token
+print(session_token)
+
+poeauth.browser.close()
 ```
 
 The script will send a verification code to your email or phone number, depending on the option you choose. 
