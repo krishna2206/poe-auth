@@ -7,6 +7,8 @@ If someone know how to get this token, feel free to contribute.
 
 Instead, you can use the full browser automated version using `--browser` option or the *V2* module (requires `playwright` package).
 
+Authentication using phone number is not supported in the browser automated version.
+
 ## Installation
 
 You can install this package using pip
@@ -100,7 +102,7 @@ auth.browser.close()
 ##### V1 (Reverse engineered API)
 ```python
 phone = input("Enter your phone number: ")
-status = auth.send_verification_code(phone)
+status = auth.send_verification_code(phone, mode="phone")
 
 # Authenticate by entering the verification code
 verification_code = input("Enter the verification code: ")
@@ -113,26 +115,6 @@ else:
 
 # Print the session token
 print(session_token)
-```
-
-##### V2 (Browser automated)
-```python
-phone = input("Enter your phone number: ")
-status = auth.send_verification_code(phone)
-
-# Authenticate by entering the verification code
-verification_code = input("Enter the verification code: ")
-if status == "user_with_confirmed_phone_number_not_found":
-    session_token = auth.signup_using_verification_code(
-        verification_code=verification_code, mode="phone")
-else:
-    session_token = auth.login_using_verification_code(
-        verification_code=verification_code, mode="phone")
-
-# Print the session token
-print(session_token)
-
-auth.browser.close()
 ```
 
 The script will send a verification code to your email or phone number, depending on the option you choose. 

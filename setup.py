@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '2.0.4'
+VERSION = '2.0.5'
 DESCRIPTION = 'A reverse-engineered Python library for the Quora\'s Poe authentication API.'
 setup(
     name="poe-auth",

@@ -21,8 +21,8 @@ def cli_V1(email, phone):
         click.echo(str(e))
         return
 
-    verification_code = input(
-        f"Enter the verification code sent to {email if email else phone}: ")
+    verification_code = click.prompt(
+        f"Enter the verification code sent to {email if email else phone}", type=str)
 
     try:
         if email:
@@ -46,25 +46,23 @@ def cli_V1(email, phone):
     click.echo(f"Successful authentication. Session cookie: {auth_session}")
 
 
-def cli_V2(email, phone):
+def cli_V2(email):
     with sync_playwright() as playwright:
         poeauth = PoeAuthV2(playwright)
 
-        if (email is None) and (phone is None):
+        if email is None:
             click.echo("Email address or phone number is required.")
             return
 
         try:
             if email:
                 status = poeauth.send_verification_code(email=email)
-            elif phone:
-                status = poeauth.send_verification_code(phone=phone, mode="phone")
         except PoeAuthExceptionV2 as e:
             click.echo(str(e))
             return
 
-        verification_code = input(
-            f"Enter the verification code sent to {email if email else phone}: ")
+        verification_code = click.prompt(
+            f"Enter the verification code sent to {email}", type=str)
 
         try:
             if email:
@@ -74,13 +72,6 @@ def cli_V2(email, phone):
                 else:
                     auth_session = poeauth.login_using_verification_code(
                         verification_code=verification_code, mode="email")
-            elif phone:
-                if status == "user_with_confirmed_phone_number_not_found":
-                    auth_session = poeauth.signup_using_verification_code(
-                        verification_code=verification_code, mode="phone")
-                else:
-                    auth_session = poeauth.login_using_verification_code(
-                        verification_code=verification_code, mode="phone")
         except PoeAuthExceptionV2 as e:
             click.echo(str(e))
             return
@@ -104,6 +95,9 @@ def cli(email, phone, help, browser):
         return
 
     if browser:
+        if phone:
+            click.echo("Phone number is not supported in browser mode.")
+            return
         cli_V2(email, phone)
     else:
         cli_V1(email, phone)

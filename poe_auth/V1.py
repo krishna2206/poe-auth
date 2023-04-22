@@ -84,7 +84,6 @@ class PoeAuth:
     # CTTO: https://github.com/ading2210/poe-api/commit/59597cfb4a9c81c93e879c985f5b617a74d07f85
     def __get_form_key(self) -> str:
         response = self.session.get(self.login_url)
-        print(response.text)
 
         script_regex = r'<script>if\(.+\)throw new Error;(.+)</script>'
         script_text = re.search(script_regex, response.text).group(1)
